@@ -1,5 +1,5 @@
 from flask import Flask
-from flask_restful import Api, Resource, reqparse, fields, marshal_with
+from flask_restful import Api, Resource, reqparse, fields, marshal_with, abort
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -45,18 +45,26 @@ class Video(Resource):
     @marshal_with(resource_fields)
     def get(self, video_id):
         video = VideoModel.query.get(video_id)
+        if not video:
+            abort(404, message="video with this id does not exist")
         return video, 200
 
     @marshal_with(resource_fields)
-    def put(self, video_id):
+    def post(self, video_id):
         args = video_put_args.parse_args()
+        video = VideoModel.query.get(video_id)
+        if video:
+            abort(409, message="video with this id does already exist")
         video = VideoModel(id=video_id, name=args['name'], likes=args['likes'], views=args['views'])
         db.session.add(video)
         db.session.commit()
         return video, 201
 
     def delete(self, video_id):
-        VideoModel.query.filter_by(id=video_id).delete()
+        video = VideoModel.query.get(video_id)
+        if not video:
+            abort(404, message="video with this id does not exist")
+        db.session.delete(video)
         db.session.commit()
         return "", 204
 
